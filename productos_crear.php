@@ -1,5 +1,4 @@
 <?php
-$variableNombreDb = 'Proyecto';
 include('config.php');
 
 // Acción de Guardar / Crear Producto

@@ -3,8 +3,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: encuesta.php');
     exit;
 }
-
-$variableNombreDb = 'Proyecto';
 require 'config.php';
 
 $experiencia   = isset($_POST['experiencia']) ? trim($_POST['experiencia']) : '';

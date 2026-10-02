@@ -1,5 +1,4 @@
 <?php
-$variableNombreDb = 'Proyecto';
 include('config.php');
 
 $maps_key = 'AIzaSyBfyCV-KGM0AIvDRMuKL6Nguree9L3kOLQ';

@@ -1,5 +1,4 @@
 <?php
-$variableNombreDb = 'Proyecto';
 include('config.php');
 
 // Obtener datos del producto a editar
