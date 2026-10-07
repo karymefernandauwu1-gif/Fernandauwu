@@ -8,44 +8,51 @@ if (!file_exists($dir)) {
     mkdir($dir, 0777, true);
 }
 
-// Recibir mensaje
+// 1. Guardar mensaje recibido en un archivo temporal único
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mensaje = trim($_POST['mensaje'] ?? '');
     $usuario = trim($_POST['usuario'] ?? 'Anónimo');
     $hora    = trim($_POST['hora'] ?? date('h:i a'));
 
     if (!empty($mensaje)) {
+        $msgId = uniqid('msg_', true);
         $data = json_encode([
+            'id'      => $msgId,
             'texto'   => htmlspecialchars($mensaje),
             'usuario' => htmlspecialchars($usuario),
-            'hora'    => htmlspecialchars($hora),
-            'time'    => microtime(true)
+            'hora'    => htmlspecialchars($hora)
         ]);
-        file_put_contents($dir . '/msg_' . microtime(true) . '.json', $data);
+        file_put_contents($dir . '/' . $msgId . '.json', $data);
     }
     echo json_encode(['status' => 'ok']);
     exit;
 }
 
-// Transmitir mensaje
-$last_check = microtime(true);
+// 2. Transmitir en vivo y eliminar el archivo para que no se reenvíe
+$mensajesEnviados = [];
 
 while (true) {
     $files = glob($dir . '/msg_*.json');
     foreach ($files as $file) {
-        $file_time = (float) str_replace([$dir . '/msg_', '.json'], '', $file);
-        if ($file_time > $last_check) {
+        $filename = basename($file);
+        if (!isset($mensajesEnviados[$filename])) {
             $content = file_get_contents($file);
-            echo "data: {$content}\n\n";
-            ob_flush();
-            flush();
-        }
-        if ((microtime(true) - $file_time) > 2) {
+            if ($content) {
+                echo "data: {$content}\n\n";
+                ob_flush();
+                flush();
+            }
+            $mensajesEnviados[$filename] = true;
+            // Eliminar el archivo inmediatamente
             @unlink($file);
         }
     }
     
-    $last_check = microtime(true);
-    usleep(300000);
+    // Limpiar memoria local del loop si acumula muchos nombres
+    if (count($mensajesEnviados) > 100) {
+        $mensajesEnviados = array_slice($mensajesEnviados, -20, null, true);
+    }
+
+    usleep(300000); // 0.3 segundos
 }
 ?>

@@ -6,7 +6,7 @@ include('includes/header.php');
 <div style="max-width: 800px; margin: 40px auto; padding: 0 20px;">
     <div style="background: #ffffff; border-radius: 12px; border: 1px solid #e0e0e0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
         
-        <!-- Encabezado con estética VOZ UPVM -->
+        <!-- Encabezado con la paleta de VOZ UPVM -->
         <div style="background-color: #004d40; color: #ffffff; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center;">
             <h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 1.25rem;">Chat de la Clase</h3>
             <span style="font-size: 0.85rem; background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 20px;">Conectado</span>
@@ -14,13 +14,13 @@ include('includes/header.php');
 
         <!-- Área de mensajes -->
         <div id="chat-box" style="height: 400px; overflow-y: auto; padding: 20px; background-color: #fcfbf9;">
-            <!-- Los mensajes se cargan aquí en tiempo real -->
+            <!-- Los mensajes se despliegan aquí en tiempo real -->
         </div>
 
         <!-- Formulario inferior -->
         <div style="padding: 16px; background-color: #f4f1ea; border-top: 1px solid #e5e0d8;">
             <form id="chatForm" style="display: flex; gap: 10px;">
-                <input type="text" id="nombreInput" placeholder="Tu nombre" value="Angel" required autocomplete="off" style="width: 140px; padding: 10px 14px; border: 1px solid #ccc; border-radius: 6px; font-family: 'DM Sans', sans-serif;">
+                <input type="text" id="nombreInput" placeholder="Tu nombre" value="Fernanda" required autocomplete="off" style="width: 140px; padding: 10px 14px; border: 1px solid #ccc; border-radius: 6px; font-family: 'DM Sans', sans-serif;">
                 <input type="text" id="mensajeInput" placeholder="Escribe un mensaje..." required autocomplete="off" style="flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 6px; font-family: 'DM Sans', sans-serif;">
                 <button type="submit" style="background-color: #004d40; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: 'Space Grotesk', sans-serif;">Enviar</button>
             </form>
@@ -37,6 +37,7 @@ include('includes/header.php');
         margin-bottom: 12px;
         max-width: 75%;
         width: fit-content;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
     .globo-encabezado {
         font-size: 0.78rem;
@@ -57,11 +58,19 @@ include('includes/header.php');
     const mensajeInput = document.getElementById('mensajeInput');
     const nombreInput = document.getElementById('nombreInput');
 
+    // Control para evitar mensajes duplicados en la interfaz
+    const mensajesRecibidos = new Set();
+
     const evtSource = new EventSource('mensajeria_api.php');
 
     evtSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        agregarGloboMensaje(data.usuario, data.texto, data.hora);
+        
+        // Se renderiza únicamente si no ha sido procesado
+        if (!mensajesRecibidos.has(data.id)) {
+            mensajesRecibidos.add(data.id);
+            agregarGloboMensaje(data.usuario, data.texto, data.hora);
+        }
     };
 
     chatForm.addEventListener('submit', function(e) {
@@ -77,12 +86,12 @@ include('includes/header.php');
         formData.append('usuario', usuario);
         formData.append('hora', hora);
 
+        // Envío al servidor; EventSource se encarga del renderizado
         fetch('mensajeria_api.php', {
             method: 'POST',
             body: formData
         });
 
-        agregarGloboMensaje(usuario, texto, hora);
         mensajeInput.value = '';
     });
 
