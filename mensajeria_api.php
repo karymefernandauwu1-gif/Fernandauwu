@@ -1,4 +1,5 @@
 <?php
+// Configuración para transmisión Server-Sent Events
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
@@ -8,19 +9,20 @@ if (!file_exists($dir)) {
     mkdir($dir, 0777, true);
 }
 
-// 1. Guardar mensaje recibido en un archivo temporal único
+// 1. Recibir y guardar mensaje enviando respuesta POST inmediata
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $msgId   = trim($_POST['id'] ?? uniqid('msg_', true));
     $mensaje = trim($_POST['mensaje'] ?? '');
     $usuario = trim($_POST['usuario'] ?? 'Anónimo');
     $hora    = trim($_POST['hora'] ?? date('h:i a'));
 
     if (!empty($mensaje)) {
-        $msgId = uniqid('msg_', true);
         $data = json_encode([
             'id'      => $msgId,
             'texto'   => htmlspecialchars($mensaje),
             'usuario' => htmlspecialchars($usuario),
-            'hora'    => htmlspecialchars($hora)
+            'hora'    => htmlspecialchars($hora),
+            'creado'  => microtime(true)
         ]);
         file_put_contents($dir . '/' . $msgId . '.json', $data);
     }
@@ -28,31 +30,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// 2. Transmitir en vivo y eliminar el archivo para que no se reenvíe
-$mensajesEnviados = [];
+// 2. Transmisión continua para usuarios conectados
+$mensajesTransmitidos = [];
 
 while (true) {
     $files = glob($dir . '/msg_*.json');
+    $ahora = microtime(true);
+
     foreach ($files as $file) {
         $filename = basename($file);
-        if (!isset($mensajesEnviados[$filename])) {
-            $content = file_get_contents($file);
-            if ($content) {
+        
+        // Leer el contenido
+        $content = @file_get_contents($file);
+        if ($content) {
+            $data = json_decode($content, true);
+
+            // Si este hilo de SSE no le ha enviado el mensaje al navegador actual, se lo envía
+            if (!isset($mensajesTransmitidos[$filename])) {
                 echo "data: {$content}\n\n";
                 ob_flush();
                 flush();
+                $mensajesTransmitidos[$filename] = true;
             }
-            $mensajesEnviados[$filename] = true;
-            // Eliminar el archivo inmediatamente
-            @unlink($file);
+
+            // Mantiene el mensaje vivo durante 5 segundos para que los DEMÁS usuarios lo lean
+            // Y transcurridos los 5 segundos, se autodestruye para no guardar nada en servidor
+            if (isset($data['creado']) && ($ahora - (float)$data['creado']) > 5) {
+                @unlink($file);
+            }
         }
     }
-    
-    // Limpiar memoria local del loop si acumula muchos nombres
-    if (count($mensajesEnviados) > 100) {
-        $mensajesEnviados = array_slice($mensajesEnviados, -20, null, true);
+
+    // Limpieza de memoria del script
+    if (count($mensajesTransmitidos) > 100) {
+        $mensajesTransmitidos = array_slice($mensajesTransmitidos, -30, null, true);
     }
 
-    usleep(300000); // 0.3 segundos
+    usleep(300000); // Revisa cada 0.3 segundos
 }
 ?>
