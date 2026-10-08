@@ -9,6 +9,7 @@ $secciones = [
     ['Gestión de Productos (CRUD)', 'productos_crear.php'],
     ['Ver Productos y Mapas', 'pagina2.php'],
     ['Chat de la Clase', 'chat.php'],
+    ['Video', 'video.php'],
 ];
 ?>
 <!DOCTYPE html>
